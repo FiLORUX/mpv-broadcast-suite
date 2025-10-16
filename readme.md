@@ -1,12 +1,18 @@
-# mpv broadcast suite
-## Professional Quality Control & Monitoring for Broadcast Engineers
+# mpv Broadcast Suite  
+### Precision Tools for Modern Broadcast Workflows  
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Requires mpv ≥ 0.35](https://img.shields.io/badge/requires-mpv%200.35%2B-informational)](https://mpv.io/installation/)
-[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)]()
+[![mpv ≥ 0.35 Required](https://img.shields.io/badge/mpv-0.35%2B-informational)](https://mpv.io/installation/)
+[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)]()
 
+---
 
-A comprehensive, production-ready [mpv](https://mpv.io/) config suite, designed for broadcast engineers, QC ops and post-production pros. Features broadcast-style timecode display, quite advanced multi-channel audio routing, and loudness compliance tooling.
+**mpv Broadcast Suite** brings the legendary *mpv* playback core — born from the MPlayer lineage - into a professional broadcast context.  
+Designed for engineers who grew up with waveform monitors, colour bars and baseband matrices - yet demand today's precision, scripting power and open workflows.  
+
+Might suit broadcast engineers, QC ops and post-production. Features broadcast-style timecode display, quite advanced multi-channel audio routing, and loudness compliance tooling.
+
+> Built for those who never stopped caring about frame accuracy.  
 
 ---
 
@@ -91,211 +97,29 @@ You should see:
 
 ---
 
-## ⌨️ Keyboard Reference
+## ⌨️ Keybindings
 
-### Timecode Display
-| Key | Action |
-|-----|--------|
-| `t` | Cycle timecode display modes (Full → TC Only → Minimal → Off) |
-| `Ctrl+t` | Toggle countdown display |
+All core functions are accessible from the keyboard — designed for operators who prefer precision over menus.
 
-### Audio Channel Routing
-| Key | Action |
-|-----|--------|
-| `Ctrl+0` | **Reset** - Clear filters, apply intelligent downmix |
-| `Ctrl+1` to `Ctrl+8` | Route stereo pairs (CH1+2, CH3+4, ..., CH15+16) |
-| `Ctrl+Alt+1` to `Ctrl+Alt+8` | Solo channels CH1-8 (mono→stereo) |
-| `Ctrl+Alt+Shift+1-8` | Solo channels CH9-16 (mono→stereo) |
-| `Ctrl+l` | Cycle loudness normalisation (None → EBU R128 → ATSC → Podcast) |
-| `Ctrl+i` | Display detailed audio information |
-
-### Playback Control
-| Key | Action |
-|-----|--------|
-| `.` / `,` | Step forward/backward one frame |
-| `[` / `]` | Decrease/increase playback speed (0.5×, 2.0×) |
-| `Backspace` | Reset playback speed to 1.0× |
-| `→` / `←` | Seek ±1 second |
-| `↑` / `↓` | Seek ±5 seconds |
-| `Shift+→` / `Shift+←` | Seek ±10 seconds |
-
-### Quality Control
-| Key | Action |
-|-----|--------|
-| `i` | Show file metadata (resolution, codec, framerate, audio config) |
-| `s` | Screenshot current frame (video only, no OSD) |
-| `S` | Screenshot with OSD/subtitles |
-| `Alt+↑` / `Alt+↓` | Zoom in/out for detail inspection |
-| `Ctrl+Arrow Keys` | Pan whilst zoomed |
-| `Alt+0` | Reset zoom and pan |
-| `d` | Toggle deinterlacing |
-| `a` | Cycle aspect ratio override |
-| `l` / `L` | Toggle loop / Set A-B loop points |
-
-### Help & Information
-| Key | Action |
-|-----|--------|
-| `F1` | Display broadcast-specific quick reference |
-| `?` | Show all keybindings |
-
----
-
-## 📖 Usage Examples
-
-### Scenario 1: Multi-Channel Embedded Audio QC
-
-You receive a 1080p59.94 file with 16 channels of embedded PCM audio:
-
-```bash
-mpv broadcast_master.mxf
-```
-
-**Workflow:**
-1. Press `Ctrl+i` to verify 16 channels detected
-2. Press `Ctrl+1` to monitor CH1+2 (typically programme L+R)
-3. Press `Ctrl+3` to check CH5+6 (often ambient or effects)
-4. Press `Ctrl+Alt+1` to solo CH1 (hear left channel only in both ears)
-5. Press `Ctrl+0` to reset and hear all channels intelligently mixed
-6. Press `Ctrl+l` repeatedly until "EBU R128 (-23 LUFS)" appears for loudness normalisation
-
-### Scenario 2: Frame-Accurate Review
-
-You need to verify a specific frame for quality control:
-
-```bash
-mpv interview_cut.mp4
-```
-
-**Workflow:**
-1. Use arrow keys for rough positioning
-2. Press `,` and `.` to step frame-by-frame
-3. Observe large timecode showing exact position: `01:23:45:18`
-4. Press `s` to capture PNG screenshot
-5. Press `Alt+↑` to zoom for pixel-peeping
-6. Use `Ctrl+Arrow Keys` to pan around zoomed area
-7. Press `Alt+0` to reset zoom when finished
-
-### Scenario 3: Live Stream Monitoring
-
-Monitoring a live ingest or stream:
-
-```bash
-mpv udp://239.1.1.1:5000
-```
-
-**Workflow:**
-1. Timecode automatically displays elapsed time with countdown
-2. Press `#` to cycle between multiple embedded audio tracks
-3. Use `Ctrl+1-8` for rapid channel selection
-4. Press `[` for half-speed review of recorded segments
-5. Press `L` twice to set A-B loop on interesting sections
+→ [Full reference: docs/KEYBINDINGS.md](docs/KEYBINDINGS.md)
 
 ---
 
 ## 🎨 Customisation
 
-### Timecode Display Options
+Every display and routing element can be adjusted through plain-text Lua configuration.  
+No GUI layers, no hidden logic — just direct control.
 
-Edit `scripts/timecode.lua` to customise appearance:
-
-```lua
-local opts = {
-    mode = 'full',              -- Start-up mode: 'full', 'tc_only', 'minimal', 'off'
-    tc_size = 72,               -- Main timecode font size (pixels)
-    tc_color = 'FFFFFF',        -- Timecode colour (hex RGB)
-    tc_border = 3,              -- Border width
-    tc_shadow = 2,              -- Shadow offset
-    bar_height = 8,             -- Progress bar height
-    bar_color_fg = '00FF00',    -- Progress bar colour (green)
-    bar_color_bg = '404040',    -- Background colour (dark grey)
-    show_countdown = true,      -- Display remaining time
-    show_elapsed = true,        -- Display elapsed time
-    show_fps = true,            -- Display framerate with DF/NDF indicator
-    refresh = 0.05,             -- Update interval (20fps)
-}
-```
-
-### Audio Routing & Loudness
-
-Edit `scripts/audiomap.lua` for custom loudness targets:
-
-```lua
-local LOUDNESS_TARGETS = {
-    ebu_r128 = -23,   -- EBU R128 (European broadcast standard)
-    atsc = -24,       -- ATSC A/85 (North American broadcast)
-    podcast = -16,    -- Podcast distribution
-    custom = -18,     -- Add your organisation's target here
-}
-```
-
-### Playback Profiles
-
-Activate built-in profiles for specific workflows:
-
-```bash
-# Frame-accurate QC mode (no interpolation, exact seeking)
-mpv --profile=qc-accurate video.mp4
-
-# Real-time monitoring (smooth playback, framedrop allowed)
-mpv --profile=qc-realtime stream.ts
-
-# HDR content with proper tone mapping
-mpv --profile=hdr hdr_content.mp4
-
-# Slow-motion review at 0.25× speed
-mpv --profile=slowmo action_sequence.mp4
-```
-
-Or apply profiles during playback by pressing `` ` `` (backtick) and typing:
-```
-apply-profile qc-accurate
-```
+→ [Configuration guide: docs/CUSTOMISATION.md](docs/CUSTOMISATION.md)
 
 ---
 
 ## 🔧 Technical Details
 
-### Supported Framerates
+Framerates, loudness, and multi-channel routing follow established broadcast standards.  
+No reinvention, only careful implementation.
 
-| Framerate | Type | Drop-Frame | Common Usage |
-|-----------|------|------------|--------------|
-| 23.976 fps | NTSC Film | Yes (`;`) | Film transferred to NTSC |
-| 24.000 fps | Film | No (`:`) | Cinema, digital film |
-| 25.000 fps | PAL | No (`:`) | European broadcast |
-| 29.97 fps | NTSC | Yes (`;`) | North American SD broadcast |
-| 30.000 fps | NTSC Progressive | No (`:`) | Progressive scan NTSC |
-| 50.000 fps | PAL Progressive | No (`:`) | European HD broadcast |
-| 59.94 fps | NTSC HD | Yes (`;`) | North American HD broadcast |
-| 60.000 fps | Progressive HD | No (`:`) | High framerate progressive |
-| 119.88 fps | HFR NTSC | Yes (`;`) | High framerate NTSC-derived |
-| 120.00 fps | HFR Progressive | No (`:`) | High framerate progressive |
-
-**Note:** Drop-frame timecode "drops" frame **numbers** (not actual frames) at the start of each minute except every 10th minute. This keeps timecode synchronised with real clock time for NTSC framerates.
-
-### Audio Format Compatibility
-
-| Format | Channel Routing | Loudness Normalisation | Notes |
-|--------|----------------|------------------------|-------|
-| PCM (WAV/AIF) | ✅ Full support | ✅ Full support | Recommended for QC work |
-| AAC (Multi-channel) | ✅ Full support | ✅ Full support | Common in MP4/MOV containers |
-| FLAC (Multi-channel) | ✅ Full support | ✅ Full support | Lossless compression |
-| AC3/E-AC3 | ⚠️ Limited | ✅ Full support | Use default downmix for routing |
-| DTS | ⚠️ Limited | ✅ Full support | Use default downmix for routing |
-| Opus | ✅ Full support | ✅ Full support | Modern codec support |
-
-**Recommendation:** For maximum compatibility with channel routing features, use uncompressed PCM or losslessly compressed FLAC audio.
-
-### Loudness Standards Compliance
-
-This suite implements industry-standard loudness normalisation:
-
-| Standard | Target | True Peak | Region | Application |
-|----------|--------|-----------|--------|-------------|
-| EBU R128 | -23 LUFS | -1 dBTP | Europe, International | Broadcast television, cinema |
-| ATSC A/85 | -24 LKFS | -2 dBTP | North America | Broadcast television (CALM Act) |
-| AES Streaming | -16 LUFS | -1 dBTP | Global | Podcast, streaming platforms |
-
-**Implementation:** Uses FFmpeg's `loudnorm` filter with linear mode for transparent, broadcast-compliant normalisation. Processing adds minimal latency suitable for real-time monitoring.
+→ [Technical reference: docs/TECHDETAILS.md](docs/TECHDETAILS.md)
 
 ---
 
@@ -303,7 +127,7 @@ This suite implements industry-standard loudness normalisation:
 
 ```
 mpv-broadcast-suite/
-├── README.md                  # This file
+├── README.md                  # Primary documentation and overview
 ├── LICENSE                    # MIT License
 ├── CONTRIBUTING.md            # Contribution guidelines
 ├── .gitignore                 # Git ignore rules
@@ -313,14 +137,16 @@ mpv-broadcast-suite/
 ├── input.conf                 # Keyboard bindings
 ├── scripts/
 │   ├── timecode.lua           # Broadcast-style timecode display
-│   └── audiomap.lua           # Multi-channel audio router
+│   └── audiomap.lua           # Multi-channel audio routing and loudness control
 ├── docs/
-│   ├── ADVANCED.md            # Advanced configuration guide
-│   ├── TROUBLESHOOTING.md     # Common issues and solutions
-│   └── KEYBOARD_REFERENCE.pdf # Printable keyboard reference card
+│   ├── KEYBINDINGS.md         # Keyboard reference and operator shortcuts
+│   ├── CUSTOMISATION.md       # Lua configuration and display options
+│   ├── TECHDETAILS.md         # Framerates, audio formats and loudness standards
+│   ├── ADVANCED.md            # Advanced configuration and automation
+│   └── TROUBLESHOOTING.md     # Common issues and practical fixes
 └── examples/
-    ├── ffmpeg_commands.md     # Useful FFmpeg commands for broadcast
-    └── sample_profiles.conf   # Additional mpv profile examples
+    ├── ffmpeg_commands.md     # Useful FFmpeg commands for broadcast pipelines
+    └── sample_profiles.conf   # Example mpv profile presets
 ```
 
 ---
@@ -452,16 +278,16 @@ If you prefer fully automated set-up, the provided installers can (optionally) r
 
 ---
 
-## 🙏 Attribution
+## 🙏 Acknowledgements
 
-This project uses mpv and FFmpeg as underlying technologies. Trademarks and copyrights belong to their respective owners. This repository distributes configuration and scripts only - no mpv or FFmpeg binaries.
+This suite stands on the shoulders of open-source giants.  
+It does not distribute their binaries, only configuration and logic designed for professional broadcast environments.
 
-- [**mpv Development Team**](https://github.com/mpv-player/mpv) - Exceptional media player foundation (see [mpv.io](https://mpv.io/))
-- [**FFmpeg Project**](https://git.ffmpeg.org/ffmpeg.git) - The silent open(-source) heart pulsing beneath almost every broadcast chain on earth
-- **EBU (European Broadcasting Union)** - R128 loudness specification
-- **SMPTE (Society of Motion Picture and Television Engineers)** - Timecode standards
-- **EVS Broadcast Equipment** - Inspiration for timecode display design
-- **Broadcast Engineering Community** - Feedback and testing
+- [**mpv Development Team**](https://mpv.io) — the resilient playback engine at its core  
+- [**FFmpeg Project**](https://ffmpeg.org) — the invisible open(-source) heart pulsing beneath almost every broadcast chain on earth
+- **EBU (European Broadcasting Union)** — R128 loudness & tech standards  
+- **SMPTE (Society of Motion Picture and Television Engineers)** — frame-accurate timecode foundations  
+- **Broadcast Engineers Worldwide** — for decades of obsessive precision
 
 ---
 
