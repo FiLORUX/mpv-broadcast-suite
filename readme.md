@@ -1,11 +1,11 @@
-# mpv Broadcast Suite
+# mpv broadcast suite
 ## Professional Quality Control & Monitoring for Broadcast Engineers
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![mpv](https://img.shields.io/badge/mpv-0.35%2B-red.svg)](https://mpv.io)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)]()
 
-A comprehensive, production-ready mpv configuration suite designed for broadcast engineers, QC operators, and post-production professionals. Features EVS-style timecode display, advanced multi-channel audio routing, and loudness compliance tooling.
+A comprehensive, production-ready mpv config suite, designed for broadcast engineers, QC ops and post-production pros. Features EVS-style timecode display, quite advanced multi-channel audio routing, and loudness compliance tooling.
 
 ---
 
