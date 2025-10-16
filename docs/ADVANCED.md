@@ -1,5 +1,5 @@
 
-# Advanced Configuration Guide
+# ⚙️ Advanced Configuration Guide
 
 Advanced customisation and integration for power users.
 

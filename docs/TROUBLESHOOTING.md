@@ -1,5 +1,5 @@
 
-# Troubleshooting Guide
+# 🧯 Troubleshooting Guide
 
 Common issues and solutions for mpv Broadcast Suite.
 
