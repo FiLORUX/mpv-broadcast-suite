@@ -256,7 +256,7 @@ Further guidance: https://mpv.io/installation/
 
 ---
 
-## Install this suite
+## 📦 Install this suite
 
 Linux / macOS:
 
@@ -272,7 +272,7 @@ The installer copies `mpv.conf`, `input.conf`, and `scripts/` to your user mpv c
 
 ---
 
-## Optional: fetch latest platform builds from scripts
+## 🔄 Optional: fetch latest platform builds from scripts
 
 If you prefer fully automated set-up, the provided installers can (optionally) resolve the latest mpv builds per platform without bundling any upstream code. See comments inside `install.sh` and `install.ps1`.
 
