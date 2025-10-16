@@ -153,9 +153,7 @@ mpv-broadcast-suite/
 
 ## 🐛 Troubleshooting  — Quick Reference
 
-Common first-line fixes for typical playback or routing issues.  
-For in-depth analysis, platform-specific cases, and extended logs, see  
-[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
+Common first-line fixes for typical playback or routing issues. For in-depth analysis, platform-specific cases, and extended logs, see [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
 
 ---
 
