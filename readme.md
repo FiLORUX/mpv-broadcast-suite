@@ -456,8 +456,8 @@ If you prefer fully automated set-up, the provided installers can (optionally) r
 
 This project uses mpv and FFmpeg as underlying technologies. Trademarks and copyrights belong to their respective owners. This repository distributes configuration and scripts only - no mpv or FFmpeg binaries.
 
-- [**mpv Development Team**](https://github.com/mpv-player/mpv) - Exceptional media player foundation (see also [mpv.io](https://mpv.io/))
-- [**FFmpeg Project**](https://github.com/FFmpeg/FFmpeg) - The silent open(-source) heart pulsing beneath almost every broadcast chain on earth (see also [ffmpeg.org](https://ffmpeg.org/))
+- [**mpv Development Team**](https://github.com/mpv-player/mpv) - Exceptional media player foundation (see [mpv.io](https://mpv.io/))
+- [**FFmpeg Project**](https://git.ffmpeg.org/ffmpeg.git) - The silent open(-source) heart pulsing beneath almost every broadcast chain on earth
 - **EBU (European Broadcasting Union)** - R128 loudness specification
 - **SMPTE (Society of Motion Picture and Television Engineers)** - Timecode standards
 - **EVS Broadcast Equipment** - Inspiration for timecode display design
