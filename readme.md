@@ -157,25 +157,35 @@ Common first-line fixes for typical playback or routing issues.
 For in-depth analysis, platform-specific cases, and extended logs, see  
 [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
 
+---
+
 ### Timecode Not Visible
 **Symptom:** No timecode appears when playing file  
 **Solution:** Press `t` to cycle display modes (may be set to 'off')  
 **Verify:** Check that `timecode.lua` exists in `scripts/` directory
+
+---
 
 ### Audio Routing Ineffective
 **Symptom:** Pressing `Ctrl+1-8` has no effect  
 **Solution:** Press `Ctrl+i` to verify channel count. If file reports "2 channels", it's already stereo—routing not needed  
 **Note:** For files with multiple audio **tracks** (not channels), use `#` to select the track first, then use `Ctrl+1-8` for channel routing within that track
 
+---
+
 ### Drop-Frame Timecode Incorrect
 **Symptom:** Timecode appears wrong or doesn't match external reference  
 **Solution:** Press `i` to verify actual framerate. Drop-frame only applies to NTSC-derived rates (~23.976, ~29.97, ~59.94)  
 **Debug:** Edit `timecode.lua` and adjust tolerance values in `get_fps_info()` if framerate detection is incorrect
 
+---
+
 ### Loudness Filter Causes Performance Issues
 **Symptom:** Playback stutters when loudness normalisation enabled  
 **Solution:** Loudness filtering is CPU-intensive. Press `Ctrl+l` to cycle to "none" on older hardware  
 **Alternative:** Use offline loudness normalisation with dedicated tools for critical listening
+
+---
 
 ### Multiple Audio Tracks Confusion
 **Symptom:** Cannot access expected channels  
