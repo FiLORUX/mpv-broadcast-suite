@@ -195,7 +195,7 @@ mpv udp://239.1.1.1:5000
 
 ### Timecode Display Options
 
-Edit `scripts/evs_timecode.lua` to customise appearance:
+Edit `scripts/timecode.lua` to customise appearance:
 
 ```lua
 local opts = {
@@ -311,7 +311,7 @@ mpv-broadcast-suite/
 ├── mpv.conf                   # Main mpv configuration
 ├── input.conf                 # Keyboard bindings
 ├── scripts/
-│   ├── evs_timecode.lua       # EVS-style timecode display
+│   ├── timecode.lua       # EVS-style timecode display
 │   └── audiomap.lua           # Multi-channel audio router
 ├── docs/
 │   ├── ADVANCED.md            # Advanced configuration guide
@@ -329,7 +329,7 @@ mpv-broadcast-suite/
 ### Timecode Not Visible
 **Symptom:** No timecode appears when playing file  
 **Solution:** Press `t` to cycle display modes (may be set to 'off')  
-**Verify:** Check that `evs_timecode.lua` exists in `scripts/` directory
+**Verify:** Check that `timecode.lua` exists in `scripts/` directory
 
 ### Audio Routing Ineffective
 **Symptom:** Pressing `Ctrl+1-8` has no effect  
@@ -339,7 +339,7 @@ mpv-broadcast-suite/
 ### Drop-Frame Timecode Incorrect
 **Symptom:** Timecode appears wrong or doesn't match external reference  
 **Solution:** Press `i` to verify actual framerate. Drop-frame only applies to NTSC-derived rates (~23.976, ~29.97, ~59.94)  
-**Debug:** Edit `evs_timecode.lua` and adjust tolerance values in `get_fps_info()` if framerate detection is incorrect
+**Debug:** Edit `timecode.lua` and adjust tolerance values in `get_fps_info()` if framerate detection is incorrect
 
 ### Loudness Filter Causes Performance Issues
 **Symptom:** Playback stutters when loudness normalisation enabled  

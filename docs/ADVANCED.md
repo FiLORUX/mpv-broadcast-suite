@@ -361,7 +361,7 @@ untimed=yes
 Add 35mm film-style feet+frames:
 
 ```lua
--- Add to evs_timecode.lua
+-- Add to timecode.lua
 local function format_feet_frames(seconds, fps)
     local frames = math.floor(seconds * fps)
     -- 35mm 4-perf: 16 frames per foot

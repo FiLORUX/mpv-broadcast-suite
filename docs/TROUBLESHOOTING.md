@@ -18,7 +18,7 @@ Common issues and solutions for mpv Broadcast Suite.
 
 2. **Verify Lua script installation:**
    ```bash
-   ls ~/.config/mpv/scripts/evs_timecode.lua
+   ls ~/.config/mpv/scripts/timecode.lua
    # Should exist and be readable
    ```
 
@@ -30,7 +30,7 @@ Common issues and solutions for mpv Broadcast Suite.
 
 4. **Test with minimal config:**
    ```bash
-   mpv --no-config --script=~/.config/mpv/scripts/evs_timecode.lua test.mp4
+   mpv --no-config --script=~/.config/mpv/scripts/timecode.lua test.mp4
    # If this works, conflict exists in main config
    ```
 
@@ -47,7 +47,7 @@ Common issues and solutions for mpv Broadcast Suite.
    # Or press 'i' during playback
    ```
 
-2. **Check tolerance values:** Edit `evs_timecode.lua`:
+2. **Check tolerance values:** Edit `timecode.lua`:
    ```lua
    -- Adjust tolerance if mpv reports imprecise framerates
    local function is_close(a, b, eps)
@@ -57,7 +57,7 @@ Common issues and solutions for mpv Broadcast Suite.
 
 3. **Manual framerate override:** If automatic detection fails:
    ```lua
-   -- In evs_timecode.lua, force framerate:
+   -- In timecode.lua, force framerate:
    local fps = 29.97  -- Force NTSC drop-frame
    -- local fps = mp.get_property_number("container-fps") or 25  -- Comment out
    ```
@@ -74,7 +74,7 @@ Common issues and solutions for mpv Broadcast Suite.
    - Press `` ` `` and type: `print-text "${duration}"`
    - If "undefined", progress bar cannot display
 
-2. **Increase update rate:** Edit `evs_timecode.lua`:
+2. **Increase update rate:** Edit `timecode.lua`:
    ```lua
    local opts = {
        refresh = 0.1,  -- Increase from 0.05 if system is slow
@@ -186,7 +186,7 @@ Common issues and solutions for mpv Broadcast Suite.
      hwdec=auto-copy  # Or: vaapi (Linux), videotoolbox (macOS), d3d11va (Windows)
      ```
 
-3. **Reduce timecode update rate:** Edit `evs_timecode.lua`:
+3. **Reduce timecode update rate:** Edit `timecode.lua`:
    ```lua
    local opts = {
        refresh = 0.2,  -- Update every 200ms instead of 50ms
@@ -207,7 +207,7 @@ Common issues and solutions for mpv Broadcast Suite.
 **Solutions:**
 1. **Check update timers:**
    - Timecode should pause when file paused
-   - If not, edit `evs_timecode.lua`:
+   - If not, edit `timecode.lua`:
      ```lua
      mp.observe_property("pause", "bool", function(_, paused)
          if paused then
@@ -326,7 +326,7 @@ Common issues and solutions for mpv Broadcast Suite.
    - Scripts in `scripts/` folder load alphabetically
    - If order matters, prefix with numbers:
      ```
-     01_evs_timecode.lua
+     01_timecode.lua
      02_audiomap.lua
      ```
 

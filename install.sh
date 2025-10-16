@@ -63,7 +63,7 @@ echo -e "${BLUE}[2/4]${NC} Checking for existing configuration..."
 BACKUP_DIR="$MPV_CONFIG/backup_$(date +%Y%m%d_%H%M%S)"
 BACKUP_NEEDED=false
 
-for file in mpv.conf input.conf scripts/evs_timecode.lua scripts/audiomap.lua; do
+for file in mpv.conf input.conf scripts/timecode.lua scripts/audiomap.lua; do
     if [ -f "$MPV_CONFIG/$file" ]; then
         if [ "$BACKUP_NEEDED" = false ]; then
             mkdir -p "$BACKUP_DIR/scripts"
@@ -97,8 +97,8 @@ echo -e "${GREEN}✓${NC} Installed mpv.conf"
 cp input.conf "$MPV_CONFIG/"
 echo -e "${GREEN}✓${NC} Installed input.conf"
 
-cp scripts/evs_timecode.lua "$MPV_CONFIG/scripts/"
-echo -e "${GREEN}✓${NC} Installed evs_timecode.lua"
+cp scripts/timecode.lua "$MPV_CONFIG/scripts/"
+echo -e "${GREEN}✓${NC} Installed timecode.lua"
 
 cp scripts/audiomap.lua "$MPV_CONFIG/scripts/"
 echo -e "${GREEN}✓${NC} Installed audiomap.lua"
@@ -108,7 +108,7 @@ echo ""
 echo -e "${BLUE}[4/4]${NC} Verifying installation..."
 ALL_GOOD=true
 
-for file in mpv.conf input.conf scripts/evs_timecode.lua scripts/audiomap.lua; do
+for file in mpv.conf input.conf scripts/timecode.lua scripts/audiomap.lua; do
     if [ ! -f "$MPV_CONFIG/$file" ]; then
         echo -e "${RED}✗${NC} Missing: $file"
         ALL_GOOD=false

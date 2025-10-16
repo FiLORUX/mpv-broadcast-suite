@@ -51,7 +51,7 @@ $backupNeeded = $false
 $filesToCheck = @(
     "mpv.conf",
     "input.conf",
-    "scripts\evs_timecode.lua",
+    "scripts\timecode.lua",
     "scripts\audiomap.lua"
 )
 
@@ -91,8 +91,8 @@ Write-Host "${GREEN}✓${NC} Installed mpv.conf"
 Copy-Item -Path "input.conf" -Destination "$MPV_CONFIG\" -Force
 Write-Host "${GREEN}✓${NC} Installed input.conf"
 
-Copy-Item -Path "scripts\evs_timecode.lua" -Destination "$MPV_CONFIG\scripts\" -Force
-Write-Host "${GREEN}✓${NC} Installed evs_timecode.lua"
+Copy-Item -Path "scripts\timecode.lua" -Destination "$MPV_CONFIG\scripts\" -Force
+Write-Host "${GREEN}✓${NC} Installed timecode.lua"
 
 Copy-Item -Path "scripts\audiomap.lua" -Destination "$MPV_CONFIG\scripts\" -Force
 Write-Host "${GREEN}✓${NC} Installed audiomap.lua"
