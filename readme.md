@@ -5,14 +5,14 @@
 [![mpv](https://img.shields.io/badge/mpv-0.35%2B-red.svg)](https://mpv.io)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)]()
 
-A comprehensive, production-ready mpv config suite, designed for broadcast engineers, QC ops and post-production pros. Features EVS-style timecode display, quite advanced multi-channel audio routing, and loudness compliance tooling.
+A comprehensive, production-ready mpv config suite, designed for broadcast engineers, QC ops and post-production pros. Features broadcast-style timecode display, quite advanced multi-channel audio routing, and loudness compliance tooling.
 
 ---
 
 ## 📺 Features
 
 ### Timecode & Monitoring
-- **EVS-Style Timecode Display** - Large, centered SMPTE timecode with frame-accurate display
+- **Broadcast-Style Timecode Display** - Large, centered SMPTE timecode with frame-accurate display
 - **Drop-Frame Support** - Proper DF/NDF handling for all NTSC framerates (23.976, 29.97, 59.94, 119.88)
 - **Progress Visualisation** - Clean progress bar showing file position
 - **Real-Time Metadata** - Elapsed time, countdown timer, FPS indicator, duration display
@@ -311,7 +311,7 @@ mpv-broadcast-suite/
 ├── mpv.conf                   # Main mpv configuration
 ├── input.conf                 # Keyboard bindings
 ├── scripts/
-│   ├── timecode.lua       # EVS-style timecode display
+│   ├── timecode.lua           # Broadcast-style timecode display
 │   └── audiomap.lua           # Multi-channel audio router
 ├── docs/
 │   ├── ADVANCED.md            # Advanced configuration guide
@@ -391,10 +391,11 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file for
 
 ## 🙏 Acknowledgements
 
-- **EVS Broadcast Equipment** - Inspiration for timecode display design
+- [**mpv Development Team**](https://mpv.io/) – Exceptional media player foundation
+- [**FFmpeg**](https://ffmpeg.org/) – The silent open(-source) heart pulsing beneath almost every broadcast chain on earth.
 - **EBU (European Broadcasting Union)** - R128 loudness specification
 - **SMPTE (Society of Motion Picture and Television Engineers)** - Timecode standards
-- **mpv Development Team** - Exceptional media player foundation
+- **EVS Broadcast Equipment** - Inspiration for timecode display design
 - **Broadcast Engineering Community** - Feedback and testing
 
 ---
@@ -411,7 +412,7 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file for
 
 ### Version 1.0.0 (2025-10-16)
 - Initial public release
-- EVS-style timecode display with drop-frame support
+- broadcast-style timecode display with drop-frame support
 - Multi-channel audio routing (up to 16 channels)
 - EBU R128, ATSC A/85, and podcast loudness normalisation
 - Comprehensive keyboard shortcuts for broadcast workflows

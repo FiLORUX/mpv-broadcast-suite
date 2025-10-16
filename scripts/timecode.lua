@@ -1,5 +1,5 @@
 -- ============================================================================
--- EVS-Style Timecode Display for mpv
+-- Broadcast Replay & Playout System Style Timecode Display for mpv
 -- ============================================================================
 -- Professional broadcast timecode overlay with progress visualisation
 --
@@ -7,7 +7,7 @@
 --   • Large, centred SMPTE timecode display (HH:MM:SS:FF format)
 --   • Automatic drop-frame/non-drop-frame detection for all framerates
 --   • Progress bar visualisation showing file position
---   • EVS-style information overlay (elapsed, countdown, duration, FPS)
+--   • Broadcast-style information overlay (elapsed, countdown, duration, FPS)
 --   • Multiple display modes for different workflows
 --
 -- Supported Framerates:
@@ -48,7 +48,7 @@ local opts = {
     bar_color_fg = '00FF00',     -- Foreground colour (green)
     bar_color_bg = '404040',     -- Background colour (dark grey)
     
-    -- Information overlay settings (EVS style, top-left)
+    -- Information overlay settings (Broadcast-style, top-left)
     info_size = 32,              -- Font size for info text
     info_color = 'FFFF00',       -- Colour (yellow for visibility)
     show_countdown = true,       -- Display remaining time
@@ -295,7 +295,7 @@ local function build_overlay()
     end
     
     -- ========================================
-    -- INFO DISPLAY (Top-Left, EVS Style)
+    -- INFO DISPLAY (Top-Left, Broadcast-Style)
     -- ========================================
     if opts.mode == 'full' and time_pos and duration then
         local info_lines = {}
@@ -466,4 +466,4 @@ if opts.mode ~= 'off' then
     start_timer()
 end
 
-mp.msg.info("EVS-style timecode display loaded. Press 't' to cycle modes.")
+mp.msg.info("Timecode display loaded. Press 't' to cycle modes.")
