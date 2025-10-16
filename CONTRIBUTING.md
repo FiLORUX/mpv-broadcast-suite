@@ -1,5 +1,5 @@
 
-# Contributing to mpv Broadcast Suite
+# Contributing to mpv broadcast suite
 
 Thank you for considering contributing to this project! This guide outlines the process for contributing code, documentation, and feedback.
 
