@@ -50,7 +50,7 @@ A comprehensive, production-ready mpv configuration suite designed for broadcast
 **Linux/macOS:**
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/mpv-broadcast-suite.git
+git clone https://github.com/FiLORUX/mpv-broadcast-suite.git
 cd mpv-broadcast-suite
 
 # Run installer
@@ -61,7 +61,7 @@ chmod +x install.sh
 **Windows (PowerShell):**
 ```powershell
 # Clone repository
-git clone https://github.com/yourusername/mpv-broadcast-suite.git
+git clone https://github.com/FiLORUX/mpv-broadcast-suite.git
 cd mpv-broadcast-suite
 
 # Run installer
@@ -401,8 +401,8 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file for
 
 ## 📞 Support & Community
 
-- **Issues:** [GitHub Issues](https://github.com/yourusername/mpv-broadcast-suite/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/yourusername/mpv-broadcast-suite/discussions)
+- **Issues:** [GitHub Issues](https://github.com/FiLORUX/mpv-broadcast-suite/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/FiLORUX/mpv-broadcast-suite/discussions)
 - **mpv Manual:** [mpv.io/manual](https://mpv.io/manual/stable/)
 
 ---
