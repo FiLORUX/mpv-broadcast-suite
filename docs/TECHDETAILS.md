@@ -1,6 +1,6 @@
-## 🔧 Technical Details
+# 🔧 Technical Details
 
-### Supported Framerates
+## Supported Framerates
 
 | Framerate | Type | Drop-Frame | Common Usage |
 |-----------|------|------------|--------------|
@@ -17,7 +17,7 @@
 
 **Note:** Drop-frame timecode "drops" frame **numbers** (not actual frames) at the start of each minute except every 10th minute. This keeps timecode synchronised with real clock time for NTSC framerates.
 
-### Audio Format Compatibility
+## Audio Format Compatibility
 
 | Format | Channel Routing | Loudness Normalisation | Notes |
 |--------|----------------|------------------------|-------|
@@ -30,7 +30,7 @@
 
 **Recommendation:** For maximum compatibility with channel routing features, use uncompressed PCM or losslessly compressed FLAC audio.
 
-### Loudness Standards Compliance
+## Loudness Standards Compliance
 
 This suite implements industry-standard loudness normalisation:
 

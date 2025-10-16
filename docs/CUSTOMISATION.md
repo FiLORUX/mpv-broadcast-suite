@@ -1,6 +1,6 @@
-## 🎨 Customisation
+# 🎨 Customisation
 
-### Timecode Display Options
+## Timecode Display Options
 
 Edit `scripts/timecode.lua` to customise appearance:
 
@@ -21,7 +21,7 @@ local opts = {
 }
 ```
 
-### Audio Routing & Loudness
+## Audio Routing & Loudness
 
 Edit `scripts/audiomap.lua` for custom loudness targets:
 
@@ -34,7 +34,7 @@ local LOUDNESS_TARGETS = {
 }
 ```
 
-### Playback Profiles
+## Playback Profiles
 
 Activate built-in profiles for specific workflows:
 
