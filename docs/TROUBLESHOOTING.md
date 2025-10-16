@@ -1,7 +1,8 @@
+# 🐛 Troubleshooting Guide
 
-# 🧯 Troubleshooting Guide
-
-Common issues and solutions for mpv Broadcast Suite.
+Practical diagnostics for operators and engineers.  
+Focus on reproducible checks, not speculation.  
+For quick fixes, see the condensed section in [README.md](../README.md).
 
 ## Timecode Display Issues
 
