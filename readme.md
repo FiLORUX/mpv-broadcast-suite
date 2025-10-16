@@ -2,10 +2,11 @@
 ## Professional Quality Control & Monitoring for Broadcast Engineers
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![mpv](https://img.shields.io/badge/mpv-0.35%2B-red.svg)](https://mpv.io)
+[![Requires mpv ≥ 0.35](https://img.shields.io/badge/requires-mpv%200.35%2B-informational)](https://mpv.io/installation/)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)]()
 
-A comprehensive, production-ready mpv config suite, designed for broadcast engineers, QC ops and post-production pros. Features broadcast-style timecode display, quite advanced multi-channel audio routing, and loudness compliance tooling.
+
+A comprehensive, production-ready [mpv](https://mpv.io/) config suite, designed for broadcast engineers, QC ops and post-production pros. Features broadcast-style timecode display, quite advanced multi-channel audio routing, and loudness compliance tooling.
 
 ---
 
@@ -389,10 +390,74 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file for
 
 ---
 
-## 🙏 Acknowledgements
+## Get mpv (required)
 
-- [**mpv Development Team**](https://mpv.io/) – Exceptional media player foundation
-- [**FFmpeg**](https://ffmpeg.org/) – The silent open(-source) heart pulsing beneath almost every broadcast chain on earth.
+<details>
+<summary>Windows</summary>
+
+- Latest community build:
+  - GitHub: https://github.com/shinchiro/mpv-winbuild-cmake/releases/latest
+  - SourceForge (direct “latest”): https://sourceforge.net/projects/mpv-player-windows/files/
+
+Unpack and run `mpv.exe`. User configuration lives in
+%APPDATA%\mpv\  (create if missing).
+</details>
+
+<details>
+<summary>macOS</summary>
+
+- Homebrew (recommended):
+
+    brew install mpv
+
+Alternative builds and notes: https://mpv.io/installation/
+</details>
+
+<details>
+<summary>Linux</summary>
+
+Install via your distribution:
+
+    # Debian / Ubuntu
+    sudo apt install mpv
+    # Fedora
+    sudo dnf install mpv
+    # Arch
+    sudo pacman -S mpv
+
+Further guidance: https://mpv.io/installation/
+</details>
+
+---
+
+## Install this suite
+
+Linux / macOS:
+
+    git clone https://github.com/FiLORUX/mpv-broadcast-suite.git
+    cd mpv-broadcast-suite && chmod +x install.sh && ./install.sh
+
+Windows (PowerShell 5+):
+
+    git clone https://github.com/FiLORUX/mpv-broadcast-suite.git
+    cd mpv-broadcast-suite; .\install.ps1
+
+The installer copies `mpv.conf`, `input.conf`, and `scripts/` to your user mpv configuration directory. No binaries are included.
+
+---
+
+## Optional: fetch latest platform builds from scripts
+
+If you prefer fully automated set-up, the provided installers can (optionally) resolve the latest mpv builds per platform without bundling any upstream code. See comments inside `install.sh` and `install.ps1`.
+
+---
+
+## 🙏 Attribution
+
+This project uses mpv and FFmpeg as underlying technologies. Trademarks and copyrights belong to their respective owners. This repository distributes configuration and scripts only — no mpv or FFmpeg binaries.
+
+- [**mpv Development Team**](https://github.com/mpv-player/mpv) — Exceptional media player foundation (see also [mpv.io](https://mpv.io/))
+- [**FFmpeg Project**](https://github.com/FFmpeg/FFmpeg) - The silent open(-source) heart pulsing beneath almost every broadcast chain on earth (see also [ffmpeg.org](https://ffmpeg.org/))
 - **EBU (European Broadcasting Union)** - R128 loudness specification
 - **SMPTE (Society of Motion Picture and Television Engineers)** - Timecode standards
 - **EVS Broadcast Equipment** - Inspiration for timecode display design
