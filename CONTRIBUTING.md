@@ -42,7 +42,7 @@ Feature requests should:
 
 2. **Follow coding standards:**
    - Lua code: 4-space indentation, descriptive variable names
-   - Comments: British English spelling, clear technical descriptions
+   - Comments: International English spelling, clear technical descriptions
    - Documentation: Update README.md and inline comments
 
 3. **Test thoroughly:**
