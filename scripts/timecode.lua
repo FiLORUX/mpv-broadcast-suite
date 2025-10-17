@@ -1,106 +1,163 @@
 -- ============================================================================
--- Broadcast Replay & Playout System Style Timecode Display for mpv
+-- Professional Broadcast Timecode Overlay for mpv
 -- ============================================================================
--- Professional broadcast timecode overlay with progress visualisation
+-- SMPTE-compliant timecode display with responsive design and efficient
+-- rendering pipeline for broadcast and post-production workflows.
 --
 -- Features:
---   • Large, centred SMPTE timecode display (HH:MM:SS:FF format)
---   • Automatic drop-frame/non-drop-frame detection for all framerates
---   • Progress bar visualisation showing file position
---   • Broadcast-style information overlay (elapsed, countdown, duration, FPS)
---   • Multiple display modes for different workflows
+--   • SMPTE 12M-1 compliant drop-frame compensation for NTSC rates
+--   • Fully responsive layout adapting to viewport changes
+--   • Efficient event-driven rendering (no wasteful polling)
+--   • Support for 23.976-120 fps including high frame rate formats
+--   • Broadcast-style information overlay with elapsed/remaining/duration
+--   • Multiple display modes: full, tc_only, minimal, off
 --
--- Supported Framerates:
---   23.976, 24, 25, 29.97 (DF), 30, 50, 59.94 (DF), 60, 119.88 (DF), 120
+-- Keybindings:
+--   t     Cycle through display modes
+--   T     Toggle countdown display
 --
--- Drop-Frame Implementation:
---   Complies with SMPTE 12M-1 standard for NTSC-derived framerates
---   Compensates for 0.1% speed difference by dropping frame numbers
---   (not actual frames) at start of each minute except every 10th minute
---
--- Author: mpv Broadcast Suite Contributors
+-- Version: 2.0.0
 -- License: MIT
--- Version: 1.0.0
 -- ============================================================================
 
 local mp = require 'mp'
 local assdraw = require 'mp.assdraw'
 
--- Configuration options
--- Modify these values to customise appearance and behaviour
-local opts = {
+-- ============================================================================
+-- Configuration
+-- ============================================================================
+
+local config = {
     -- Display mode: 'full', 'tc_only', 'minimal', 'off'
-    -- 'full'     = Large TC + progress bar + info overlay
-    -- 'tc_only'  = Large TC + progress bar only
-    -- 'minimal'  = Small TC in corner
-    -- 'off'      = No display
     mode = 'full',
     
-    -- Main timecode display settings
-    tc_size = 72,                -- Font size in pixels
-    tc_color = 'FFFFFF',         -- Colour in hex RGB (white)
-    tc_border = 3,               -- Border width for legibility
-    tc_shadow = 2,               -- Shadow offset for depth
+    -- Responsive sizing (as fraction of viewport)
+    safe_margin = 0.03,          -- Inner safe area margin
+    tc_rel_size = 0.065,         -- Timecode font size (relative to height)
+    tc_border_rel = 0.003,       -- Outline thickness
+    info_rel_size = 0.022,       -- Info text size
+    bar_height_rel = 0.010,      -- Progress bar height
+    bar_gap_rel = 0.005,         -- Gap between TC and progress bar
     
-    -- Progress bar settings
-    bar_height = 8,              -- Height in pixels
-    bar_margin = 20,             -- Distance from TC to bar
-    bar_color_fg = '00FF00',     -- Foreground colour (green)
-    bar_color_bg = '404040',     -- Background colour (dark grey)
+    -- Display toggles
+    show_elapsed = true,
+    show_countdown = true,
+    show_duration = true,
+    show_fps = true,
+    show_filename = false,       -- Disabled by default for cleaner display
     
-    -- Information overlay settings (Broadcast-style, top-left)
-    info_size = 32,              -- Font size for info text
-    info_color = 'FFFF00',       -- Colour (yellow for visibility)
-    show_countdown = true,       -- Display remaining time
-    show_elapsed = true,         -- Display elapsed time
-    show_duration = true,        -- Display total duration
-    show_fps = true,             -- Display framerate with DF/NDF indicator
+    -- Colour palette (RGB hex, broadcast-safe)
+    colours = {
+        tc_fg = 'FFFFFF',        -- Timecode foreground (white)
+        tc_border = '000000',    -- Timecode outline (black)
+        info_fg = 'FFFF00',      -- Info text (yellow)
+        bar_fg = '00FF00',       -- Progress bar (green)
+        bar_bg = '404040',       -- Progress background (dark grey)
+    },
     
-    -- Update frequency
-    refresh = 0.05,              -- Seconds between updates (20fps)
+    -- Opacity values (0.0 = transparent, 1.0 = opaque)
+    opacity = {
+        tc_fg = 1.00,
+        info_fg = 1.00,
+        bar_fg = 0.95,
+        bar_bg = 0.35,
+    },
+    
+    -- Framerate detection tolerance
+    fps_epsilon = 0.05,          -- Increased tolerance for variable sources
 }
 
--- Module state
-local timer = nil
-local screen_w, screen_h = 1920, 1080  -- Default resolution, updated dynamically
+-- ============================================================================
+-- State Management
+-- ============================================================================
+
+local state = {
+    overlay = nil,               -- OSD overlay object
+    last_dimensions = nil,       -- Cache for dimension changes
+    is_paused = false,           -- Playback pause state
+    needs_update = true,         -- Render flag
+}
+
+-- ============================================================================
+-- Utility Functions
+-- ============================================================================
+
+--- Clamp value between minimum and maximum
+local function clamp(x, min_val, max_val)
+    if x < min_val then return min_val
+    elseif x > max_val then return max_val
+    else return x end
+end
+
+--- Convert opacity (0-1) to libass alpha (00-FF, inverted)
+local function opacity_to_alpha(opacity)
+    local alpha_val = math.floor((1 - clamp(opacity, 0, 1)) * 255 + 0.5)
+    return string.format('%02X', alpha_val)
+end
+
+--- Convert RGB hex to BGR hex (libass format)
+local function rgb_to_bgr(rgb_hex)
+    return rgb_hex:sub(5, 6) .. rgb_hex:sub(3, 4) .. rgb_hex:sub(1, 2)
+end
+
+--- Generate libass colour string with opacity
+local function ass_colour(rgb_hex, opacity)
+    return string.format('\\1c&H%s&\\1a&H%s&',
+        rgb_to_bgr(rgb_hex),
+        opacity_to_alpha(opacity))
+end
+
+--- Generate libass border string
+local function ass_border(rgb_hex, width_px)
+    return string.format('\\bord%d\\3c&H%s&\\3a&H00&',
+        math.floor(width_px + 0.5),
+        rgb_to_bgr(rgb_hex))
+end
+
+--- Check if two floating point values are approximately equal
+local function is_close(a, b, epsilon)
+    return math.abs(a - b) < epsilon
+end
 
 -- ============================================================================
 -- Framerate Detection and Classification
 -- ============================================================================
 
---- Check if two values are approximately equal within tolerance
--- @param a First value
--- @param b Second value
--- @param eps Epsilon tolerance (default: 0.01)
--- @return boolean True if values are within tolerance
-local function is_close(a, b, eps)
-    return math.abs(a - b) < (eps or 0.01)
-end
-
---- Analyse framerate and determine drop-frame/non-drop-frame mode
--- Detects NTSC-derived framerates (23.976, 29.97, 59.94, 119.88) and
--- classifies them as drop-frame. All other rates use non-drop-frame.
+--- Analyse framerate and determine drop-frame mode
+-- Detects NTSC-derived framerates and classifies them appropriately.
+-- Uses increased tolerance to handle sources with slight variation.
 --
--- @param fps Frames per second (from container or stream metadata)
--- @return fps_rounded Rounded FPS for calculation (24, 30, 60, 120, etc.)
--- @return is_drop_frame Boolean indicating if drop-frame compensation needed
--- @return separator String separator for timecode display (':' or ';')
+-- @param fps Frames per second from container or stream metadata
+-- @return fps_rounded Rounded FPS for timecode calculation
+-- @return is_drop_frame Boolean indicating drop-frame mode
+-- @return separator Timecode separator character (':' or ';')
 local function get_fps_info(fps)
-    -- NTSC film rate: 24000/1001 (~23.976 fps)
-    if is_close(fps, 23.976, 0.01) or is_close(fps, 24000/1001, 0.001) then
+    if not fps or fps <= 0 then
+        mp.msg.warn('Invalid framerate received, defaulting to 25 fps NDF')
+        return 25, false, ':'
+    end
+    
+    local eps = config.fps_epsilon
+    
+    -- NTSC film rate: 24000/1001 (≈23.976)
+    if is_close(fps, 23.976, eps) or is_close(fps, 24000/1001, 0.001) then
         return 24, true, ';'
     
-    -- NTSC standard definition: 30000/1001 (~29.97 fps)
-    elseif is_close(fps, 29.97, 0.01) or is_close(fps, 30000/1001, 0.001) then
+    -- NTSC standard definition: 30000/1001 (≈29.97)
+    elseif is_close(fps, 29.97, eps) or is_close(fps, 30000/1001, 0.001) then
         return 30, true, ';'
     
-    -- NTSC high definition: 60000/1001 (~59.94 fps)
-    elseif is_close(fps, 59.94, 0.02) or is_close(fps, 60000/1001, 0.002) then
+    -- NTSC high definition: 60000/1001 (≈59.94)
+    elseif is_close(fps, 59.94, eps) or is_close(fps, 60000/1001, 0.001) then
         return 60, true, ';'
     
-    -- NTSC high framerate: 120000/1001 (~119.88 fps)
-    elseif is_close(fps, 119.88, 0.05) or is_close(fps, 120000/1001, 0.005) then
+    -- NTSC high framerate: 120000/1001 (≈119.88)
+    elseif is_close(fps, 119.88, eps) or is_close(fps, 120000/1001, 0.001) then
         return 120, true, ';'
+    
+    -- NTSC 48 fps (less common but valid): 48000/1001 (≈47.952)
+    elseif is_close(fps, 47.952, eps) or is_close(fps, 48000/1001, 0.001) then
+        return 48, true, ';'
     
     -- All other framerates: non-drop-frame
     else
@@ -112,52 +169,59 @@ end
 -- Drop-Frame Timecode Calculation
 -- ============================================================================
 
---- Calculate drop-frame compensation per SMPTE 12M-1
--- Drop-frame timecode skips frame NUMBERS (not actual frames) to maintain
--- sync with real clock time. For 29.97 fps, frames 00 and 01 are skipped
--- at the start of each minute EXCEPT minutes 00, 10, 20, 30, 40, 50.
--- For 59.94 fps, frames 00, 01, 02, 03 are skipped with the same logic.
+--- Calculate drop-frame compensation per SMPTE 12M-1 standard
+-- Drop-frame skips frame NUMBERS (not actual frames) to maintain sync
+-- with real clock time. Frames are dropped at the start of each minute
+-- except every 10th minute (00, 10, 20, 30, 40, 50).
 --
--- Formula: adjusted_frames = frames + (drops_per_minute × complete_minutes) 
---                                   - (drops_per_10min × complete_10min_blocks)
+-- Drop pattern by framerate:
+--   29.97 fps: Skip frames 00, 01 (2 frames per minute)
+--   59.94 fps: Skip frames 00, 01, 02, 03 (4 frames per minute)
+--  119.88 fps: Skip frames 00-07 (8 frames per minute)
+--   47.952fps: Skip frames 00-03 (4 frames per minute)
 --
--- @param frames Total frame count from video start
--- @param fps_rounded Rounded framerate (30, 60, 120)
--- @param is_df Boolean indicating if drop-frame mode active
--- @return Adjusted frame count with drop-frame compensation
-local function calc_dropframe(frames, fps_rounded, is_df)
-    if not is_df then return frames end
-    
-    -- Determine drop count per minute based on framerate
-    -- 30 fps: drop 2 frames per minute
-    -- 60 fps: drop 4 frames per minute
-    -- 120 fps: drop 8 frames per minute
-    local drop_per_min = (fps_rounded == 60) and 4 or 2
-    if fps_rounded == 120 then drop_per_min = 8 end
-    
-    -- Calculate frames per time unit
-    local fpm = fps_rounded * 60       -- Frames per minute
-    local fp10m = fps_rounded * 600    -- Frames per 10 minutes
-    
-    -- Decompose total frames into 10-minute blocks and remainder
-    local d = frames
-    local ten_min = math.floor(d / fp10m)
-    local rem10 = d % fp10m
-    
-    -- Calculate dropped frames
-    -- Drop occurs every minute except 10th minute
-    -- Therefore: 9 minutes per 10-minute block have drops
-    local dropped = ten_min * (drop_per_min * 9)
-    
-    -- Handle remaining minutes after complete 10-minute blocks
-    local mins = math.floor(rem10 / fpm)
-    if mins > 0 then
-        -- Don't drop on 10th minute (minute 0, 10, 20, etc.)
-        local extra_drop = drop_per_min * (mins - math.floor(mins / 10))
-        dropped = dropped + extra_drop
+-- @param total_frames Absolute frame count from video start
+-- @param fps_rounded Rounded framerate (24, 30, 48, 60, 120)
+-- @param is_drop_frame Boolean indicating drop-frame mode active
+-- @return Adjusted frame count with drop-frame compensation applied
+local function calc_dropframe(total_frames, fps_rounded, is_drop_frame)
+    if not is_drop_frame then
+        return total_frames
     end
     
-    return frames + dropped
+    -- Determine drop count per minute based on framerate
+    local drop_per_min
+    if fps_rounded == 30 or fps_rounded == 24 then
+        drop_per_min = 2
+    elseif fps_rounded == 60 or fps_rounded == 48 then
+        drop_per_min = 4
+    elseif fps_rounded == 120 then
+        drop_per_min = 8
+    else
+        mp.msg.warn(string.format('Unexpected DF framerate: %d, using 2 frame drop', fps_rounded))
+        drop_per_min = 2
+    end
+    
+    -- Calculate frames per time unit
+    local frames_per_min = fps_rounded * 60
+    local frames_per_10min = fps_rounded * 600
+    
+    -- Decompose into 10-minute blocks and remainder
+    local ten_min_blocks = math.floor(total_frames / frames_per_10min)
+    local remaining_frames = total_frames % frames_per_10min
+    
+    -- Calculate total dropped frames
+    -- Each 10-minute block drops frames in 9 out of 10 minutes
+    local total_dropped = ten_min_blocks * (drop_per_min * 9)
+    
+    -- Handle remaining minutes after complete 10-minute blocks
+    local remaining_minutes = math.floor(remaining_frames / frames_per_min)
+    if remaining_minutes > 0 then
+        -- Don't drop on the first minute of each 10-minute block (minute 0)
+        total_dropped = total_dropped + (drop_per_min * remaining_minutes)
+    end
+    
+    return total_frames + total_dropped
 end
 
 -- ============================================================================
@@ -169,221 +233,299 @@ end
 --
 -- @param seconds Time position in seconds
 -- @param fps Framerate from video metadata
--- @return tc_string Formatted timecode string
--- @return is_df Boolean indicating drop-frame mode
+-- @return tc_string Formatted timecode string (HH:MM:SS:FF)
+-- @return is_drop_frame Boolean indicating drop-frame mode
 -- @return separator Character used between seconds and frames
 local function format_timecode(seconds, fps)
     if not seconds or seconds < 0 then
-        return "--:--:--:--", false, ':'
+        return '00:00:00:00', false, ':'
     end
     
     -- Classify framerate and get parameters
-    local fps_rounded, is_df, sep = get_fps_info(fps)
+    local fps_rounded, is_df, separator = get_fps_info(fps)
     
     -- Convert seconds to total frame count
     local total_frames = math.floor(seconds * fps + 0.5)
     
     -- Apply drop-frame compensation if needed
-    local frames = calc_dropframe(total_frames, fps_rounded, is_df)
+    local adjusted_frames = calc_dropframe(total_frames, fps_rounded, is_df)
     
-    -- Decompose into hours, minutes, seconds, frames
-    local h = math.floor(frames / (fps_rounded * 3600))
-    local rem = frames % (fps_rounded * 3600)
-    local m = math.floor(rem / (fps_rounded * 60))
-    rem = rem % (fps_rounded * 60)
-    local s = math.floor(rem / fps_rounded)
-    local f = rem % fps_rounded
+    -- Decompose into time components
+    local frames_per_hour = fps_rounded * 3600
+    local frames_per_min = fps_rounded * 60
+    
+    local hours = math.floor(adjusted_frames / frames_per_hour)
+    local remainder = adjusted_frames % frames_per_hour
+    
+    local minutes = math.floor(remainder / frames_per_min)
+    remainder = remainder % frames_per_min
+    
+    local secs = math.floor(remainder / fps_rounded)
+    local frames = remainder % fps_rounded
     
     -- Format as HH:MM:SS:FF with appropriate separator
-    return string.format("%02d:%02d:%02d%s%02d", h, m, s, sep, f), is_df, sep
+    local tc_string = string.format('%02d:%02d:%02d%s%02d',
+        hours, minutes, secs, separator, frames)
+    
+    return tc_string, is_df, separator
 end
 
---- Format duration as human-readable time
--- Generates H:MM:SS or M:SS format depending on duration
---
+--- Format duration as human-readable time string
 -- @param seconds Duration in seconds
--- @return Formatted duration string
+-- @return Formatted duration string (H:MM:SS or M:SS)
 local function format_duration(seconds)
-    if not seconds or seconds < 0 then return "--:--" end
+    if not seconds or seconds < 0 then
+        return '--:--'
+    end
     
-    local h = math.floor(seconds / 3600)
-    local m = math.floor((seconds % 3600) / 60)
-    local s = math.floor(seconds % 60)
+    local hours = math.floor(seconds / 3600)
+    local mins = math.floor((seconds % 3600) / 60)
+    local secs = math.floor(seconds % 60)
     
-    if h > 0 then
-        return string.format("%d:%02d:%02d", h, m, s)
+    if hours > 0 then
+        return string.format('%d:%02d:%02d', hours, mins, secs)
     else
-        return string.format("%d:%02d", m, s)
+        return string.format('%d:%02d', mins, secs)
     end
 end
 
 -- ============================================================================
--- Overlay Construction
+-- Viewport Dimension Handling
 -- ============================================================================
 
---- Build ASS (Advanced SubStation Alpha) overlay string
--- Constructs the complete on-screen display using libass rendering
--- Includes timecode, progress bar, and information overlay
+--- Get OSD dimensions with fallback
+-- Prefers osd-dimensions property for correct handling of letterboxing
+-- and safe areas, falls back to get_osd_size if unavailable.
 --
--- @return ASS format string ready for rendering
-local function build_overlay()
-    if opts.mode == 'off' then return "" end
+-- @return dimensions Table with {w, h, ml, mr, mt, mb}
+local function get_osd_dimensions()
+    local dims = mp.get_property_native('osd-dimensions')
     
+    if not dims then
+        local width, height = mp.get_osd_size()
+        return {
+            w = width or 1920,
+            h = height or 1080,
+            ml = 0, mr = 0, mt = 0, mb = 0
+        }
+    end
+    
+    return dims
+end
+
+  -- ============================================================================
+-- Overlay Rendering
+-- ============================================================================
+
+-- Build and render complete OSD overlay
+-- Constructs timecode display, progress bar, and information overlay
+-- using responsive layout based on current viewport dimensions.
+local function render_overlay()
+    -- Early out if overlay is disabled
+    if config.mode == 'off' then
+        if state.overlay then
+            state.overlay:remove()
+            state.overlay = nil -- ensure overlay object is cleared
+        end
+        return
+    end
+
+    -- Get viewport dimensions
+    local dims = get_osd_dimensions()
+    local vp_w, vp_h = dims.w, dims.h
+    if (not vp_w) or (not vp_h) or vp_w <= 0 or vp_h <= 0 then
+        return
+    end
+
     -- Retrieve playback properties
-    local time_pos = mp.get_property_number("time-pos")
-    local duration = mp.get_property_number("duration")
-    local fps = mp.get_property_number("container-fps") 
-             or mp.get_property_number("fps") 
-             or 25  -- Fallback to PAL standard
-    
-    -- Get current OSD dimensions (updates on window resize)
-    local osd_w = mp.get_property_number("osd-width", 1920)
-    local osd_h = mp.get_property_number("osd-height", 1080)
-    screen_w, screen_h = osd_w, osd_h
-    
+    local time_pos     = mp.get_property_number('time-pos')
+    local duration     = mp.get_property_number('duration')
+    local fps          = mp.get_property_number('container-fps')
+                          or mp.get_property_number('fps')
+                          or 25
+    local progress_pct = mp.get_property_number('percent-pos') or 0
+
+    -- Initialise overlay if needed
+    if not state.overlay then
+        state.overlay = mp.create_osd_overlay('ass-events')
+    end
+    state.overlay.res_x = vp_w
+    state.overlay.res_y = vp_h
+
     local ass = assdraw.ass_new()
-    
+
+    -- Calculate responsive dimensions
+    local margin      = math.floor(math.min(vp_w, vp_h) * config.safe_margin + 0.5)
+    local safe_left   = dims.ml + margin
+    local safe_right  = vp_w - dims.mr - margin
+    local safe_top    = dims.mt + margin
+    local safe_bottom = vp_h - dims.mb - margin
+    local safe_width  = safe_right - safe_left
+    local safe_height = safe_bottom - safe_top
+
+    local tc_font_size   = clamp(math.floor(vp_h * config.tc_rel_size     + 0.5), 16, 160)
+    local info_font_size = clamp(math.floor(vp_h * config.info_rel_size   + 0.5), 12, 96)
+    local border_width   = clamp(math.floor(vp_h * config.tc_border_rel   + 0.5), 0, 8)
+    local bar_height     = clamp(math.floor(vp_h * config.bar_height_rel  + 0.5), 2, 32)
+
+    -- Calculate layout positions
+    local centre_x    = math.floor(safe_left + safe_width / 2)
+    local tc_y        = math.floor(safe_bottom - vp_h * (config.bar_gap_rel + config.bar_height_rel) - tc_font_size * 0.5)
+    local bar_y_top   = safe_bottom - bar_height
+    local bar_y_bottom= safe_bottom
+
     -- ========================================
-    -- MAIN TIMECODE (Bottom Centre)
+    -- Progress Bar
     -- ========================================
-    if opts.mode ~= 'minimal' and time_pos then
-        local tc, is_df, sep = format_timecode(time_pos, fps)
-        local df_indicator = is_df and " DF" or " NDF"
-        
-        -- Position: centred horizontally, 15% from bottom
-        local tc_y = osd_h - (osd_h * 0.15)
-        
-        ass:new_event()
-        ass:an(8)  -- Alignment: top-centre (we position manually)
-        ass:pos(osd_w / 2, tc_y)
-        ass:append(string.format("{\\fs%d\\bord%d\\shad%d\\c&H%s&}", 
-                   opts.tc_size, opts.tc_border, opts.tc_shadow, opts.tc_color))
-        ass:append(tc)
-        
-        -- Small drop-frame/non-drop-frame indicator
-        ass:append(string.format("{\\fs%d}", math.floor(opts.tc_size * 0.3)))
-        ass:append(df_indicator)
-        
-        -- ========================================
-        -- PROGRESS BAR (Below Timecode)
-        -- ========================================
-        if duration and duration > 0 and opts.mode == 'full' then
-            local progress = time_pos / duration
-            local bar_y = tc_y - opts.tc_size - opts.bar_margin
-            local bar_w = osd_w * 0.6  -- 60% of screen width
-            local bar_x = (osd_w - bar_w) / 2
-            
-            -- Background bar (full width)
+    if config.mode ~= 'minimal' and duration and duration > 0 then
+        -- Bar width (60% of safe width, centred)
+        local bar_width = math.floor(safe_width * 0.6)
+        local bar_left  = math.floor(centre_x - bar_width / 2)
+        local bar_right = bar_left + bar_width
+
+        -- Defensive: ensure coordinates are valid
+        if bar_left < bar_right and bar_y_top < bar_y_bottom then
+            -- Background bar
             ass:new_event()
-            ass:pos(0, 0)
+            ass:append('{\\an7\\pos(0,0)\\bord0\\shad0\\p1}')
+            ass:append(ass_colour(config.colours.bar_bg, config.opacity.bar_bg))
             ass:draw_start()
-            ass:append(string.format("{\\c&H%s&\\bord0}", opts.bar_color_bg))
-            ass:rect_cw(bar_x, bar_y, bar_x + bar_w, bar_y + opts.bar_height)
+            ass:rect_cw(bar_left, bar_y_top, bar_right, bar_y_bottom)
             ass:draw_stop()
-            
-            -- Foreground bar (progress)
-            if progress > 0 then
-                local fg_w = bar_w * math.min(progress, 1.0)
-                ass:new_event()
-                ass:pos(0, 0)
-                ass:draw_start()
-                ass:append(string.format("{\\c&H%s&\\bord0}", opts.bar_color_fg))
-                ass:rect_cw(bar_x, bar_y, bar_x + fg_w, bar_y + opts.bar_height)
-                ass:draw_stop()
+            ass:append('{\\p0}') -- reset path after drawing
+
+            -- Foreground progress bar
+            if progress_pct > 0 then
+                local progress_width = math.floor(bar_width * (progress_pct / 100) + 0.5)
+                local progress_right = bar_left + progress_width
+
+                if progress_right > bar_left then
+                    ass:new_event()
+                    ass:append('{\\an7\\pos(0,0)\\bord0\\shad0\\p1}')
+                    ass:append(ass_colour(config.colours.bar_fg, config.opacity.bar_fg))
+                    ass:draw_start()
+                    ass:rect_cw(bar_left, bar_y_top, progress_right, bar_y_bottom)
+                    ass:draw_stop()
+                    ass:append('{\\p0}') -- reset path after drawing
+                end
             end
         end
     end
-    
+
     -- ========================================
-    -- INFO DISPLAY (Top-Left, Broadcast-Style)
+    -- Main Timecode Display
     -- ========================================
-    if opts.mode == 'full' and time_pos and duration then
-        local info_lines = {}
-        
-        -- Elapsed time
-        if opts.show_elapsed then
-            table.insert(info_lines, "ELAPSED: " .. format_duration(time_pos))
-        end
-        
-        -- Remaining time (countdown)
-        if opts.show_countdown then
-            local remaining = duration - time_pos
-            table.insert(info_lines, "REMAIN: -" .. format_duration(remaining))
-        end
-        
-        -- Total duration
-        if opts.show_duration then
-            table.insert(info_lines, "TOTAL: " .. format_duration(duration))
-        end
-        
-        -- FPS with drop-frame indicator
-        if opts.show_fps then
-            local _, is_df = get_fps_info(fps)
-            local fps_str = string.format("%.2f fps %s", fps, is_df and "(DF)" or "(NDF)")
-            table.insert(info_lines, fps_str)
-        end
-        
-        -- Filename
-        local filename = mp.get_property("filename", "")
-        table.insert(info_lines, filename)
-        
-        -- Draw info box line by line
-        local info_y = 40
-        for i, line in ipairs(info_lines) do
-            ass:new_event()
-            ass:an(7)  -- Alignment: top-left
-            ass:pos(30, info_y + (i-1) * (opts.info_size + 5))
-            ass:append(string.format("{\\fs%d\\bord2\\shad1\\c&H%s&}", 
-                       opts.info_size, opts.info_color))
-            ass:append(line)
-        end
-    end
-    
-    -- ========================================
-    -- MINIMAL MODE (Corner Timecode Only)
-    -- ========================================
-    if opts.mode == 'minimal' and time_pos then
-        local tc = format_timecode(time_pos, fps)
+    if config.mode ~= 'minimal' and time_pos then
+        local tc_string, is_df = format_timecode(time_pos, fps)
+        local df_indicator = is_df and ' DF' or ' NDF'
+
         ass:new_event()
-        ass:an(7)  -- Top-left
-        ass:pos(20, 20)
-        ass:append(string.format("{\\fs%d\\bord2\\c&HFFFFFF&}", opts.info_size))
-        ass:append(tc)
+        ass:append(string.format('{\\an8\\pos(%d,%d)\\fs%d%s%s\\shad2}',
+            centre_x, tc_y, tc_font_size,
+            ass_colour(config.colours.tc_fg, config.opacity.tc_fg),
+            ass_border(config.colours.tc_border, border_width)))
+        ass:append(tc_string)
+        ass:append(string.format('{\\fs%d}', math.floor(tc_font_size * 0.3)))
+        ass:append(df_indicator)
     end
-    
-    return ass.text
+
+    -- ========================================
+    -- Information Overlay (Broadcast Style)
+    -- ========================================
+    if config.mode == 'full' and time_pos and duration then
+        local info_x = safe_left
+        local info_y = safe_top
+        local line_height = math.floor(info_font_size * 1.15)
+
+        local function add_info_line(text)
+            ass:new_event()
+            ass:append(string.format('{\\an7\\pos(%d,%d)\\fs%d%s\\bord2\\shad1}',
+                info_x, info_y, info_font_size,
+                ass_colour(config.colours.info_fg, config.opacity.info_fg)))
+            ass:append(text)
+            info_y = info_y + line_height
+        end
+
+        -- Elapsed time
+        if config.show_elapsed then
+            add_info_line(string.format('ELAPSED: %s', format_duration(time_pos)))
+        end
+
+        -- Remaining time
+        if config.show_countdown then
+            local remaining = math.max(0, (duration or 0) - (time_pos or 0))
+            add_info_line(string.format('REMAIN:  -%s', format_duration(remaining)))
+        end
+
+        -- Total duration
+        if config.show_duration and duration then
+            add_info_line(string.format('TOTAL:   %s', format_duration(duration)))
+        end
+
+        -- Framerate with DF/NDF indicator
+        if config.show_fps and fps then
+            local _, is_df_meta = get_fps_info(fps)
+            add_info_line(string.format('%.2f fps %s', fps, is_df_meta and '(DF)' or '(NDF)'))
+        end
+
+        -- Filename (optional, off by default)
+        if config.show_filename then
+            local filename = mp.get_property('filename', '')
+            if filename ~= '' then add_info_line(filename) end
+        end
+    end
+
+    -- ========================================
+    -- Minimal Mode (Corner Timecode)
+    -- ========================================
+    if config.mode == 'minimal' and time_pos then
+        local tc_string = (function(ts, f) local s = format_timecode(ts, f); return s end)(time_pos, fps)
+        ass:new_event()
+        ass:append(string.format('{\\an7\\pos(%d,%d)\\fs%d%s\\bord2}',
+            safe_left, safe_top, info_font_size,
+            ass_colour(config.colours.tc_fg, config.opacity.tc_fg)))
+        ass:append(tc_string)
+    end
+
+    -- Commit overlay to display
+    state.overlay.data = ass.text
+    state.overlay:update()
+    state.needs_update = false
 end
 
 -- ============================================================================
--- Display Update and Timer Management
+-- Event-Driven Update System
 -- ============================================================================
 
---- Update on-screen display
--- Rebuilds and renders the overlay
-local function update_display()
-    if opts.mode == 'off' then
-        mp.set_osd_ass(screen_w, screen_h, "")
-        return
+--- Request overlay update on next render cycle
+local function request_update()
+    if not state.needs_update then
+        state.needs_update = true
+        mp.add_timeout(0, render_overlay)
     end
-    
-    local overlay = build_overlay()
-    mp.set_osd_ass(screen_w, screen_h, overlay)
 end
 
---- Start periodic update timer
-local function start_timer()
-    if timer then timer:kill() end
-    timer = mp.add_periodic_timer(opts.refresh, update_display)
-    update_display()
+--- Handle dimension changes
+local function on_dimensions_change(_, dims)
+    if dims then
+        state.last_dimensions = dims
+        request_update()
+    end
 end
 
---- Stop update timer and clear display
-local function stop_timer()
-    if timer then 
-        timer:kill() 
-        timer = nil 
+--- Handle pause state changes
+local function on_pause_change(_, paused)
+    state.is_paused = paused
+    if not paused then
+        request_update()
     end
-    mp.set_osd_ass(screen_w, screen_h, "")
+end
+
+--- Handle time position changes
+local function on_time_change()
+    if not state.is_paused and config.mode ~= 'off' then
+        request_update()
+    end
 end
 
 -- ============================================================================
@@ -394,76 +536,71 @@ end
 -- Sequence: full → tc_only → minimal → off → full
 local function cycle_mode()
     local modes = {'full', 'tc_only', 'minimal', 'off'}
-    local current_idx = 1
+    local current_index = 1
     
-    -- Find current mode in list
-    for i, m in ipairs(modes) do
-        if m == opts.mode then 
-            current_idx = i
-            break 
+    for i, mode in ipairs(modes) do
+        if mode == config.mode then
+            current_index = i
+            break
         end
     end
     
-    -- Advance to next mode (wrapping)
-    local next_idx = (current_idx % #modes) + 1
-    opts.mode = modes[next_idx]
+    local next_index = (current_index % #modes) + 1
+    config.mode = modes[next_index]
     
-    -- Provide user feedback
-    mp.osd_message("TC Display: " .. opts.mode:upper(), 1.5)
-    
-    -- Update display state
-    if opts.mode == 'off' then
-        stop_timer()
-    else
-        if not timer then start_timer() end
-        update_display()
-    end
+    mp.osd_message(string.format('Timecode Display: %s', config.mode:upper()), 1.5)
+    request_update()
 end
 
---- Toggle countdown display in full mode
+--- Toggle countdown display
 local function toggle_countdown()
-    opts.show_countdown = not opts.show_countdown
-    mp.osd_message("Countdown: " .. (opts.show_countdown and "ON" or "OFF"), 1)
-    update_display()
+    config.show_countdown = not config.show_countdown
+    mp.osd_message(string.format('Countdown: %s',
+        config.show_countdown and 'ON' or 'OFF'), 1)
+    request_update()
 end
 
 -- ============================================================================
--- Event Handlers
+-- Initialisation and Registration
 -- ============================================================================
 
--- Update display when playback position changes
-mp.observe_property("time-pos", "number", function()
-    if opts.mode ~= 'off' then 
-        update_display() 
+--- Clean up on file end
+local function cleanup()
+    if state.overlay then
+        state.overlay:remove()
+        state.overlay = nil
     end
-end)
-
--- Initialise on file load
-mp.register_event("file-loaded", function()
-    if opts.mode ~= 'off' then 
-        start_timer() 
-    end
-end)
-
--- Clean up on file end
-mp.register_event("end-file", function()
-    stop_timer()
-end)
-
--- ============================================================================
--- Script Messages (External Control)
--- ============================================================================
-
-mp.register_script_message("cycle_mode", cycle_mode)
-mp.register_script_message("toggle_countdown", toggle_countdown)
-
--- ============================================================================
--- Initialisation
--- ============================================================================
-
--- Start timer if not in 'off' mode
-if opts.mode ~= 'off' then
-    start_timer()
+    state.needs_update = false
 end
 
-mp.msg.info("Timecode display loaded. Press 't' to cycle modes.")
+--- Initialise on file load
+local function initialise()
+    cleanup()
+    state.needs_update = true
+    request_update()
+end
+
+-- Register event handlers (efficient, event-driven approach)
+mp.observe_property('osd-dimensions', 'native', on_dimensions_change)
+mp.observe_property('pause', 'bool', on_pause_change)
+mp.observe_property('time-pos', 'number', on_time_change)
+mp.observe_property('fullscreen', 'bool', request_update)
+mp.observe_property('window-scale', 'number', request_update)
+
+mp.register_event('file-loaded', initialise)
+mp.register_event('end-file', cleanup)
+
+-- Register keybindings
+mp.add_key_binding('t', 'cycle_timecode_mode', cycle_mode)
+mp.add_key_binding('T', 'toggle_countdown', toggle_countdown)
+
+-- Register script messages for external control
+mp.register_script_message('cycle_mode', cycle_mode)
+mp.register_script_message('toggle_countdown', toggle_countdown)
+
+-- Initial render
+if config.mode ~= 'off' then
+    request_update()
+end
+
+mp.msg.info('Superimposed timecode loaded. Press "t" to cycle modes.')
