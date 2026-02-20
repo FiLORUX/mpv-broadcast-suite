@@ -128,7 +128,7 @@ No reinvention, only careful implementation.
 ```
 mpv-broadcast-suite/
 ├── README.md                  # Primary documentation and overview
-├── LICENSE                    # MIT License
+├── LICENSE                    # MIT Licence
 ├── CONTRIBUTING.md            # Contribution guidelines
 ├── .gitignore                 # Git ignore rules
 ├── install.sh                 # Installation script (Linux/macOS)
