@@ -20,7 +20,7 @@
 --   Provides linear-mode normalisation for transparent processing
 --
 -- Author: mpv Broadcast Suite Contributors
--- License: MIT
+-- Licence: MIT
 -- Version: 1.0.0
 -- ============================================================================
 

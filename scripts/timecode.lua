@@ -17,7 +17,7 @@
 --   T     Toggle countdown display
 --
 -- Version: 2.0.0
--- License: MIT
+-- Licence: MIT
 -- ============================================================================
 
 local mp = require 'mp'

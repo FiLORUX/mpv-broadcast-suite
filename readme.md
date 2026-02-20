@@ -218,9 +218,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ---
 
-## 📄 License
+## 📄 Licence
 
-This project is licensed under the MIT License - see [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT Licence — see [LICENSE](LICENSE) file for details.
 
 **Third-Party Components:**
 - mpv player: GPL-2.0+ ([mpv.io](https://mpv.io))
@@ -327,3 +327,7 @@ It does not distribute their binaries, only configuration and logic designed for
 **Made with ⚡ for broadcast engineers, by broadcast engineers.**
 
 *If this project helps your workflow, consider starring the repository on GitHub!*
+
+---
+
+David Thåst · [thåst.se](https://xn--thst-roa.se) · [FiLORUX](https://github.com/FiLORUX)
