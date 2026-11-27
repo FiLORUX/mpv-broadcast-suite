@@ -184,8 +184,8 @@ local function calc_dropframe(total_frames, fps_rounded, is_drop_frame)
     end
     
     -- Calculate frames per time unit
-    local frames_per_min = fps_rounded * 60
-    local frames_per_10min = fps_rounded * 600
+    local frames_per_min = fps_rounded * 60 - drop_per_min
+    local frames_per_10min = fps_rounded * 600 - drop_per_min * 9
     
     -- Decompose into 10-minute blocks and remainder
     local ten_min_blocks = math.floor(total_frames / frames_per_10min)
@@ -195,9 +195,9 @@ local function calc_dropframe(total_frames, fps_rounded, is_drop_frame)
     local total_dropped = ten_min_blocks * (drop_per_min * 9)
     
     -- Handle remaining minutes after complete 10-minute blocks
-    local remaining_minutes = math.floor(remaining_frames / frames_per_min)
-    if remaining_minutes > 0 then
-        total_dropped = total_dropped + (drop_per_min * remaining_minutes)
+    if remaining_frames >= drop_per_min then
+        total_dropped = total_dropped + drop_per_min *
+            math.floor((remaining_frames - drop_per_min) / frames_per_min)
     end
     
     return total_frames + total_dropped
