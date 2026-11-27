@@ -4,6 +4,7 @@
 | Key | Action |
 |-----|--------|
 | `t` | Cycle timecode display modes (Full → TC Only → Minimal → Off) |
+| `Ctrl+Shift+t` | Cycle automatic, DF and NDF timecode mode for the current file |
 | `Ctrl+t` | Toggle countdown display |
 
 ### Audio Channel Routing

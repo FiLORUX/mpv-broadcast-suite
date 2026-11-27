@@ -5,16 +5,17 @@
 -- rendering pipeline for broadcast and post-production workflows.
 --
 -- Features:
---   • SMPTE 12M-1 compliant drop-frame compensation for NTSC rates
+--   • Drop-frame compensation for 29.97 and 59.94 fps
 --   • Fully responsive layout adapting to viewport changes
 --   • Efficient event-driven rendering (no wasteful polling)
---   • Support for 23.976-120 fps including high frame rate formats
+--   • Explicit DF/NDF selection when timecode metadata is unavailable
 --   • Broadcast-style information overlay with elapsed/remaining/duration
 --   • Multiple display modes: full, tc_only, minimal, off
 --
 -- Keybindings:
 --   t     Cycle through display modes
 --   T     Toggle countdown display
+--   Ctrl+Shift+t  Cycle automatic, DF and NDF mode (with input.conf)
 --
 -- Version: 2.0.0
 -- Author: David Thåst and contributors
@@ -65,8 +66,6 @@ local config = {
         bar_bg = 0.35,
     },
     
-    -- Framerate detection tolerance
-    fps_epsilon = 0.05,          -- Increased tolerance for variable sources
 }
 
 -- ============================================================================
@@ -77,7 +76,8 @@ local state = {
     overlay = nil,               -- OSD overlay object
     last_dimensions = nil,       -- Cache for dimension changes
     is_paused = false,           -- Playback pause state
-    needs_update = true,         -- Render flag
+    needs_update = false,        -- Render flag
+    timecode_mode = 'auto',      -- Per-file operator override: auto, df, ndf
 }
 
 -- ============================================================================
@@ -116,48 +116,44 @@ local function ass_border(rgb_hex, width_px)
         rgb_to_bgr(rgb_hex))
 end
 
---- Check if two floating point values are approximately equal
-local function is_close(a, b, epsilon)
-    return math.abs(a - b) < epsilon
-end
-
 -- ============================================================================
 -- Framerate Detection and Classification
 -- ============================================================================
 
---- Analyse framerate and determine drop-frame mode
+--- Resolve the display mode without guessing from frame rate alone.
 local function get_fps_info(fps)
-    if not fps or fps <= 0 then
-        mp.msg.warn('Invalid framerate received, defaulting to 25 fps NDF')
-        return 25, false, ':'
+    if not fps or fps <= 0 or fps >= 100 then return nil, nil, nil end
+    local nominal = math.floor(fps + 0.5)
+    local df_supported = math.abs(fps - 30000 / 1001) < 0.005 or
+        math.abs(fps - 60000 / 1001) < 0.005
+    local mode = state.timecode_mode
+    if mode == 'auto' then
+        local tags = mp.get_property_native('metadata')
+        local timecode = nil
+        if type(tags) == 'table' then
+            for key, value in pairs(tags) do
+                if type(key) == 'string' and key:lower() == 'timecode' and type(value) == 'string' then
+                    if timecode and timecode ~= value then return nominal, nil, nil end
+                    timecode = value
+                end
+            end
+        end
+        if not timecode then return nominal, nil, nil end
+        local h, m, s, sep, f = timecode:match('^(%d%d):(%d%d):(%d%d)([:;])(%d%d)$')
+        h, m, s, f = tonumber(h), tonumber(m), tonumber(s), tonumber(f)
+        if not h or h > 23 or m > 59 or s > 59 or f >= nominal then return nominal, nil, nil end
+        if sep == ';' then
+            local drop_count = nominal == 60 and 4 or 2
+            if not df_supported or (m % 10 ~= 0 and s == 0 and f < drop_count) then
+                return nominal, nil, nil
+            end
+            mode = 'df'
+        else
+            mode = 'ndf'
+        end
     end
-    
-    local eps = config.fps_epsilon
-    
-    -- NTSC film rate: 24000/1001 (≈23.976)
-    if is_close(fps, 23.976, eps) or is_close(fps, 24000/1001, 0.001) then
-        return 24, true, ';'
-    
-    -- NTSC standard definition: 30000/1001 (≈29.97)
-    elseif is_close(fps, 29.97, eps) or is_close(fps, 30000/1001, 0.001) then
-        return 30, true, ';'
-    
-    -- NTSC high definition: 60000/1001 (≈59.94)
-    elseif is_close(fps, 59.94, eps) or is_close(fps, 60000/1001, 0.001) then
-        return 60, true, ';'
-    
-    -- NTSC high framerate: 120000/1001 (≈119.88)
-    elseif is_close(fps, 119.88, eps) or is_close(fps, 120000/1001, 0.001) then
-        return 120, true, ';'
-    
-    -- NTSC 48 fps: 48000/1001 (≈47.952)
-    elseif is_close(fps, 47.952, eps) or is_close(fps, 48000/1001, 0.001) then
-        return 48, true, ';'
-    
-    -- All other framerates: non-drop-frame
-    else
-        return math.floor(fps + 0.5), false, ':'
-    end
+    if mode == 'df' and not df_supported then return nominal, nil, nil end
+    return nominal, mode == 'df', mode == 'df' and ';' or ':'
 end
 
 -- ============================================================================
@@ -184,8 +180,8 @@ local function calc_dropframe(total_frames, fps_rounded, is_drop_frame)
     end
     
     -- Calculate frames per time unit
-    local frames_per_min = fps_rounded * 60
-    local frames_per_10min = fps_rounded * 600
+    local frames_per_min = fps_rounded * 60 - drop_per_min
+    local frames_per_10min = fps_rounded * 600 - drop_per_min * 9
     
     -- Decompose into 10-minute blocks and remainder
     local ten_min_blocks = math.floor(total_frames / frames_per_10min)
@@ -195,9 +191,9 @@ local function calc_dropframe(total_frames, fps_rounded, is_drop_frame)
     local total_dropped = ten_min_blocks * (drop_per_min * 9)
     
     -- Handle remaining minutes after complete 10-minute blocks
-    local remaining_minutes = math.floor(remaining_frames / frames_per_min)
-    if remaining_minutes > 0 then
-        total_dropped = total_dropped + (drop_per_min * remaining_minutes)
+    if remaining_frames >= drop_per_min then
+        total_dropped = total_dropped + drop_per_min *
+            math.floor((remaining_frames - drop_per_min) / frames_per_min)
     end
     
     return total_frames + total_dropped
@@ -209,12 +205,11 @@ end
 
 --- Format seconds as SMPTE timecode string
 local function format_timecode(seconds, fps)
-    if not seconds or seconds < 0 then
-        return '00:00:00:00', false, ':'
-    end
+    if not seconds or seconds < 0 then return '--:--:--:--', nil, nil end
     
     -- Classify framerate and get parameters
     local fps_rounded, is_df, separator = get_fps_info(fps)
+    if is_df == nil then return '--:--:--:--', nil, nil end
     
     -- Convert seconds to total frame count
     local total_frames = math.floor(seconds * fps + 0.5)
@@ -307,7 +302,6 @@ local function render_overlay()
     local duration = mp.get_property_number('duration')
     local fps = mp.get_property_number('container-fps')
              or mp.get_property_number('fps')
-             or 25
     local progress_pct = mp.get_property_number('percent-pos') or 0
 
     -- Initialise overlay if needed
@@ -380,7 +374,7 @@ local function render_overlay()
     -- ========================================
     if config.mode ~= 'minimal' and config.mode ~= 'off' and time_pos then
         local tc_string, is_df = format_timecode(time_pos, fps)
-        local df_indicator = is_df and ' DF' or ' NDF'
+        local df_indicator = is_df == nil and ' TC MODE?' or (is_df and ' DF' or ' NDF')
 
         ass:new_event()
         ass:an(8)  -- Top-centre alignment
@@ -434,7 +428,8 @@ local function render_overlay()
         -- Framerate with DF/NDF indicator
         if config.show_fps then
             local _, is_df_meta = get_fps_info(fps)
-            add_info_line(string.format('%.2f fps %s', fps, is_df_meta and '(DF)' or '(NDF)'))
+            local label = is_df_meta == nil and '(TC MODE?)' or (is_df_meta and '(DF)' or '(NDF)')
+            add_info_line(fps and string.format('%.2f fps %s', fps, label) or 'FPS UNKNOWN')
         end
 
         -- Filename (optional, off by default)
@@ -450,7 +445,8 @@ local function render_overlay()
     -- Minimal Mode (Corner Timecode)
     -- ========================================
     if config.mode == 'minimal' and time_pos then
-        local tc_string = format_timecode(time_pos, fps)
+        local tc_string, is_df = format_timecode(time_pos, fps)
+        if is_df == nil then tc_string = tc_string .. ' TC MODE?' end
         
         ass:new_event()
         ass:an(7)  -- Top-left alignment
@@ -533,6 +529,24 @@ local function toggle_countdown()
     request_update()
 end
 
+--- Select an explicit per-file timecode mode when metadata is unavailable.
+local function cycle_timecode_standard()
+    local next_mode = { auto = 'df', df = 'ndf', ndf = 'auto' }
+    state.timecode_mode = next_mode[state.timecode_mode]
+    local fps = mp.get_property_number('container-fps') or mp.get_property_number('fps')
+    if state.timecode_mode == 'df' then
+        local _, is_df = get_fps_info(fps)
+        if is_df == nil then
+            state.timecode_mode = 'ndf'
+            mp.osd_message('DF unavailable at this frame rate; using NDF', 2)
+            request_update()
+            return
+        end
+    end
+    mp.osd_message('Timecode mode: ' .. state.timecode_mode:upper(), 2)
+    request_update()
+end
+
 -- ============================================================================
 -- Initialisation and Registration
 -- ============================================================================
@@ -549,7 +563,8 @@ end
 --- Initialise on file load
 local function initialise()
     cleanup()
-    state.needs_update = true
+    state.timecode_mode = 'auto'
+    state.needs_update = false
     request_update()
 end
 
@@ -559,6 +574,9 @@ mp.observe_property('pause', 'bool', on_pause_change)
 mp.observe_property('time-pos', 'number', on_time_change)
 mp.observe_property('fullscreen', 'bool', request_update)
 mp.observe_property('window-scale', 'number', request_update)
+mp.observe_property('metadata', 'native', request_update)
+mp.observe_property('container-fps', 'number', request_update)
+mp.observe_property('fps', 'number', request_update)
 
 mp.register_event('file-loaded', initialise)
 mp.register_event('end-file', cleanup)
@@ -570,6 +588,7 @@ mp.add_key_binding('T', 'toggle_countdown', toggle_countdown)
 -- Register script messages for external control
 mp.register_script_message('cycle_mode', cycle_mode)
 mp.register_script_message('toggle_countdown', toggle_countdown)
+mp.register_script_message('cycle_timecode_standard', cycle_timecode_standard)
 
 -- Initial render
 if config.mode ~= 'off' then

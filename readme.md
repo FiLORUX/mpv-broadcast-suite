@@ -20,7 +20,7 @@ Might suit broadcast engineers, QC ops and post-production. Features broadcast-s
 
 ### Timecode & Monitoring
 - **Broadcast-Style Timecode Display** - Large, centered SMPTE timecode with frame-accurate display
-- **Drop-Frame Support** - Proper DF/NDF handling for all NTSC framerates (23.976, 29.97, 59.94, 119.88)
+- **Drop-Frame Support** - DF at 29.97 and 59.94 fps; NDF is available for supported rates below 100 fps.
 - **Progress Visualisation** - Clean progress bar showing file position
 - **Real-Time Metadata** - Elapsed time, countdown timer, FPS indicator, duration display
 - **Multiple Display Modes** - Full overlay, TC-only, minimal, and off modes
@@ -94,6 +94,15 @@ You should see:
 - Large timecode display centred at bottom of screen
 - Information overlay in top-left corner
 - Green progress bar beneath timecode
+
+The overlay shows elapsed position, not the embedded source start timecode.
+It uses a valid file-level `timecode` tag to select DF (`;`) or NDF (`:`).
+When that tag is absent, invalid, or conflicts with the frame rate, it shows
+`TC MODE?` instead of guessing. Press `Ctrl+Shift+t` to cycle automatic,
+DF and NDF for the current file; the choice resets when the next file loads.
+DF selection is available at 29.97 and 59.94 fps. Other frame rates below
+100 fps support NDF; rates at or above 100 fps are not currently displayed.
+Metadata availability depends on the container and mpv's demuxer.
 
 ---
 
